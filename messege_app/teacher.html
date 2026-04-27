@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>先生用</title>
+<script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
+
+<style>
+body { margin: 0; font-family: sans-serif; }
+
+#infoDisplay {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  font-size: 14px;
+  background: rgba(255,255,255,0.85);
+  padding: 4px 8px;
+  z-index: 10;
+}
+
+#statusDisplay {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 14px;
+  background: rgba(255,255,255,0.85);
+  padding: 4px 8px;
+  z-index: 10;
+}
+
+#buttons {
+  position: absolute;
+  top: 36px;
+  left: 10px;
+  z-index: 10;
+  background: rgba(255,255,255,0.85);
+  padding: 4px;
+}
+
+#frameArea {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  padding-top: 70px;
+  box-sizing: border-box;
+}
+
+.pane {
+  height: 100%;
+  overflow: hidden;
+}
+
+iframe {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+#leftPane { width: 50%; }
+#rightPane { width: 50%; }
+
+#divider {
+  width: 8px;
+  background: #ccc;
+  cursor: col-resize;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.hidden { display: none; }
+
+.dragging iframe {
+  pointer-events: none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="infoDisplay">番号:1 / タイトル:基本のチャットアプリ</div>
+<div id="statusDisplay">状態:初期化中</div>
+
+<div id="buttons">
+  <button id="prevButton">戻る</button>
+  <button id="nextButton">次へ</button>
+</div>
+
+<div id="frameArea">
+  <div id="leftPane" class="pane">
+    <iframe id="leftFrame"></iframe>
+  </div>
+
+  <div id="divider"></div>
+
+  <div id="rightPane" class="pane">
+    <iframe id="rightFrame"></iframe>
+  </div>
+</div>
+
+<script>
+const titleList = [
+  "基本のチャットアプリ",
+  "パケット通信",
+  "個人認証",
+  "パスワードの解読",
+  "パケットキャプチャー",
+  "暗号化"
+];
+
+const teacherUrlListLeft = [
+  "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/message_app.sb3&id=AH05B23F3B",
+  "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/Account_non.sb3&block=basic&id=AH05B23F3B",
+  "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/Account_S.sb3&fullscreen=true&block=basic&id=AH05B23F3B",
+  "mama",
+  "mama",
+  "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/message_app6.sb3&block=basic&id=AH05B23F3B"
+];
+    
+const teacherUrlListRight = [
+  null,
+  null,
+  "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/Account_C.sb3&block=basic&id=AH05B23F3B",
+  "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/Account_Decipher.sb3&block=basic&id=AH05B23F3B",
+  "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/message_app_packetcapture.sb3&block=basic&id=AH05B23F3B",
+  "mama"
+];
+
+const ably = new Ably.Realtime({
+  key: "yPyk0g.YmsQlA:1T_iCByOObaZup3LYuvuWhAjCbRMOVvsMGCl1U9sOZk"
+});
+
+const channel = ably.channels.get("lesson-control");
+
+let currentNumber = 1;
+let leftWidthPercent = 50;
+let isDragging = false;
+
+const leftPane = document.getElementById("leftPane");
+const rightPane = document.getElementById("rightPane");
+const divider = document.getElementById("divider");
+const leftFrame = document.getElementById("leftFrame");
+const rightFrame = document.getElementById("rightFrame");
+
+function updateInfoDisplay() {
+  document.getElementById("infoDisplay").textContent =
+    "番号:" + currentNumber +
+    " / タイトル:" + titleList[currentNumber - 1];
+}
+
+function updateStatusDisplay(status) {
+  document.getElementById("statusDisplay").textContent = "状態:" + status;
+}
+
+function updateDisplays(status) {
+  updateInfoDisplay();
+  updateStatusDisplay(status);
+}
+
+function updateIframes() {
+  const leftUrl = teacherUrlListLeft[currentNumber - 1];
+  const rightUrl = teacherUrlListRight[currentNumber - 1];
+
+  if (rightUrl === null) {
+    leftPane.style.width = "100%";
+    rightPane.classList.add("hidden");
+    divider.classList.add("hidden");
+
+    if (leftUrl !== "mama") {
+      leftFrame.src = leftUrl;
+    }
+
+    rightFrame.src = "about:blank";
+
+  } else {
+    leftPane.style.width = leftWidthPercent + "%";
+    rightPane.style.width = (100 - leftWidthPercent) + "%";
+
+    rightPane.classList.remove("hidden");
+    divider.classList.remove("hidden");
+
+    if (leftUrl !== "mama") {
+      leftFrame.src = leftUrl;
+    }
+
+    if (rightUrl !== "mama") {
+      rightFrame.src = rightUrl;
+    }
+  }
+}
+
+async function send() {
+  try {
+    await channel.publish("next-number", { number: currentNumber });
+    updateStatusDisplay("送信済み");
+  } catch (error) {
+    updateStatusDisplay("送信エラー");
+    console.error(error);
+  }
+}
+
+document.getElementById("nextButton").onclick = () => {
+  if (currentNumber < titleList.length) {
+    currentNumber++;
+    updateDisplays("送信中");
+    updateIframes();
+    send();
+  }
+};
+
+document.getElementById("prevButton").onclick = () => {
+  if (currentNumber > 1) {
+    currentNumber--;
+    updateDisplays("送信中");
+    updateIframes();
+    send();
+  }
+};
+
+ably.connection.on((stateChange) => {
+  updateStatusDisplay(stateChange.current);
+});
+
+divider.addEventListener("mousedown", (event) => {
+  isDragging = true;
+  document.body.classList.add("dragging");
+  event.preventDefault();
+});
+
+document.addEventListener("mouseup", () => {
+  isDragging = false;
+  document.body.classList.remove("dragging");
+});
+
+document.addEventListener("mousemove", (event) => {
+  if (!isDragging) return;
+
+  const rect = document.getElementById("frameArea").getBoundingClientRect();
+
+  let percent = ((event.clientX - rect.left) / rect.width) * 100;
+  percent = Math.max(10, Math.min(90, percent));
+
+  leftWidthPercent = percent;
+
+  leftPane.style.width = leftWidthPercent + "%";
+  rightPane.style.width = (100 - leftWidthPercent) + "%";
+
+  event.preventDefault();
+});
+
+updateIframes();
+updateDisplays("初期表示");
+</script>
+
+</body>
+</html>
