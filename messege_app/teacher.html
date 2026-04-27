@@ -83,6 +83,7 @@ iframe {
 
 <div id="buttons">
   <button id="prevButton">戻る</button>
+  <button id="refreshButton">更新</button>
   <button id="nextButton">次へ</button>
 </div>
 
@@ -104,7 +105,7 @@ const titleList = [
   "パケット通信",
   "個人認証",
   "パスワードの解読",
-  "パケットキャプチャー",
+  "パケットキャプチャ",
   "暗号化"
 ];
 
@@ -199,18 +200,23 @@ async function send() {
   }
 }
 
-document.getElementById("nextButton").onclick = () => {
-  if (currentNumber < titleList.length) {
-    currentNumber++;
+document.getElementById("prevButton").onclick = () => {
+  if (currentNumber > 1) {
+    currentNumber--;
     updateDisplays("送信中");
     updateIframes();
     send();
   }
 };
 
-document.getElementById("prevButton").onclick = () => {
-  if (currentNumber > 1) {
-    currentNumber--;
+document.getElementById("refreshButton").onclick = () => {
+  updateStatusDisplay("再送信中");
+  send();
+};
+
+document.getElementById("nextButton").onclick = () => {
+  if (currentNumber < titleList.length) {
+    currentNumber++;
     updateDisplays("送信中");
     updateIframes();
     send();

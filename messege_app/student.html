@@ -59,7 +59,7 @@ const titleList = [
   "パケット通信",
   "個人認証",
   "パスワードの解読",
-  "パケットキャプチャー",
+  "パケットキャプチャ",
   "暗号化"
 ];
 
@@ -109,9 +109,15 @@ ably.connection.on((stateChange) => {
 });
 
 channel.subscribe("next-number", (message) => {
-  currentNumber = message.data.number;
-  updateDisplays("受信");
-  updateIframe();
+  const receivedNumber = message.data.number;
+
+  if (receivedNumber !== currentNumber) {
+    currentNumber = receivedNumber;
+    updateDisplays("受信");
+    updateIframe();
+  } else {
+    updateStatusDisplay("受信・変更なし");
+  }
 });
 
 updateIframe();
