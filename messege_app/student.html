@@ -2,37 +2,55 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>生徒用</title>
 <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
-
 <style>
-body { margin: 0; font-family: sans-serif; }
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: sans-serif;
+}
+
+button { touch-action: manipulation; }
 
 #infoDisplay {
   position: absolute;
   top: 8px;
   left: 10px;
   font-size: 14px;
-  background: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.9);
   padding: 4px 8px;
-  z-index: 10;
+  border-radius: 6px;
+  z-index: 20;
 }
 
-#statusDisplay {
+#statusArea {
   position: absolute;
   top: 8px;
   right: 10px;
   font-size: 14px;
-  background: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.9);
   padding: 4px 8px;
-  z-index: 10;
+  border-radius: 6px;
+  z-index: 20;
 }
 
 #studentArea {
   width: 100vw;
-  height: 100vh;
-  padding-top: 40px;
+  height: 100dvh;
+  padding-top: 48px;
   box-sizing: border-box;
+  position: relative;
+}
+
+.iframeWrap {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 iframe {
@@ -40,17 +58,26 @@ iframe {
   height: 100%;
   border: 1px solid #ccc;
   box-sizing: border-box;
+  display: block;
 }
 </style>
 </head>
 
 <body>
 
-<div id="infoDisplay">番号:1 / タイトル:基本のチャットアプリ</div>
-<div id="statusDisplay">状態:初期化中</div>
+<div id="infoDisplay">
+  <button id="numberButton">ページ:1</button>
+  <a id="titleLink" href="https://example.com" target="_blank" rel="noopener noreferrer">基本のチャットアプリ</a>
+</div>
+
+<div id="statusArea">
+  <button id="forceReloadButton">状態:初期化中</button>
+</div>
 
 <div id="studentArea">
-  <iframe id="frame"></iframe>
+  <div class="iframeWrap">
+    <iframe id="frame"></iframe>
+  </div>
 </div>
 
 <script>
@@ -79,16 +106,26 @@ const ably = new Ably.Realtime({
 const channel = ably.channels.get("lesson-control");
 
 let currentNumber = 1;
+let lastUrl = urlList[0];
+
 const frame = document.getElementById("frame");
 
 function updateInfoDisplay() {
-  document.getElementById("infoDisplay").textContent =
-    "番号:" + currentNumber +
-    " / タイトル:" + titleList[currentNumber - 1];
+  const title = titleList[currentNumber - 1];
+
+  document.getElementById("infoDisplay").innerHTML =
+    `<button id="numberButton">ページ:${currentNumber}</button> <a id="titleLink" href="${lastUrl}" target="_blank" rel="noopener noreferrer">${title}</a>`;
+
+  document.getElementById("numberButton").onclick = () => {
+    if (confirm("ページを強制更新しますか？")) {
+      updateIframe(true);
+      updateStatusDisplay("強制更新");
+    }
+  };
 }
 
 function updateStatusDisplay(status) {
-  document.getElementById("statusDisplay").textContent = "状態:" + status;
+  document.getElementById("forceReloadButton").textContent = "状態:" + status;
 }
 
 function updateDisplays(status) {
@@ -96,13 +133,34 @@ function updateDisplays(status) {
   updateStatusDisplay(status);
 }
 
-function updateIframe() {
+function updateIframe(forceReload = false) {
   const url = urlList[currentNumber - 1];
 
   if (url !== "mama") {
+    lastUrl = url;
     frame.src = url;
+  } else if (forceReload && lastUrl) {
+    frame.src = lastUrl;
+  }
+
+  updateInfoDisplay();
+}
+
+async function requestCurrentNumber() {
+  try {
+    updateStatusDisplay("問い合わせ中");
+    await channel.publish("request-current-number", {});
+    updateStatusDisplay("問い合わせ送信済み");
+  } catch (error) {
+    updateStatusDisplay("問い合わせエラー");
+    console.error(error);
   }
 }
+
+// 状態ボタン：先生用アプリへ現在番号を問い合わせ
+document.getElementById("forceReloadButton").onclick = () => {
+  requestCurrentNumber();
+};
 
 ably.connection.on((stateChange) => {
   updateStatusDisplay(stateChange.current);

@@ -2,52 +2,62 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>先生用</title>
 <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
-
 <style>
-body { margin: 0; font-family: sans-serif; }
-
-#infoDisplay {
-  position: absolute;
-  top: 8px;
-  left: 10px;
-  font-size: 14px;
-  background: rgba(255,255,255,0.85);
-  padding: 4px 8px;
-  z-index: 10;
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: sans-serif;
 }
 
-#statusDisplay {
+button { touch-action: manipulation; }
+
+.topBar {
   position: absolute;
   top: 8px;
-  right: 10px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.9);
+  padding: 0 8px;
+  border-radius: 6px;
+  z-index: 20;
   font-size: 14px;
-  background: rgba(255,255,255,0.85);
-  padding: 4px 8px;
-  z-index: 10;
 }
+
+#infoDisplay { left: 10px; }
 
 #buttons {
-  position: absolute;
-  top: 36px;
-  left: 10px;
-  z-index: 10;
-  background: rgba(255,255,255,0.85);
-  padding: 4px;
+  left: 50%;
+  transform: translateX(-50%);
 }
+
+#statusArea { right: 10px; }
 
 #frameArea {
   display: flex;
   width: 100vw;
-  height: 100vh;
-  padding-top: 70px;
+  height: 100dvh;
+  padding-top: 48px;
   box-sizing: border-box;
 }
 
 .pane {
   height: 100%;
+  position: relative;
   overflow: hidden;
+}
+
+.iframeWrap {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 iframe {
@@ -55,17 +65,19 @@ iframe {
   height: 100%;
   border: 1px solid #ccc;
   box-sizing: border-box;
+  display: block;
 }
 
 #leftPane { width: 50%; }
 #rightPane { width: 50%; }
 
 #divider {
-  width: 8px;
+  width: 12px;
   background: #ccc;
   cursor: col-resize;
   height: 100%;
   flex-shrink: 0;
+  touch-action: none;
 }
 
 .hidden { display: none; }
@@ -78,24 +90,33 @@ iframe {
 
 <body>
 
-<div id="infoDisplay">番号:1 / タイトル:基本のチャットアプリ</div>
-<div id="statusDisplay">状態:初期化中</div>
+<div id="infoDisplay" class="topBar">
+  <button id="numberButton">ページ:1</button>
+  <span>基本のチャットアプリ</span>
+</div>
 
-<div id="buttons">
+<div id="buttons" class="topBar">
   <button id="prevButton">戻る</button>
-  <button id="refreshButton">更新</button>
   <button id="nextButton">次へ</button>
+</div>
+
+<div id="statusArea" class="topBar">
+  <button id="forceReloadButton">状態:初期化中</button>
 </div>
 
 <div id="frameArea">
   <div id="leftPane" class="pane">
-    <iframe id="leftFrame"></iframe>
+    <div class="iframeWrap">
+      <iframe id="leftFrame"></iframe>
+    </div>
   </div>
 
   <div id="divider"></div>
 
   <div id="rightPane" class="pane">
-    <iframe id="rightFrame"></iframe>
+    <div class="iframeWrap">
+      <iframe id="rightFrame"></iframe>
+    </div>
   </div>
 </div>
 
@@ -137,6 +158,9 @@ let currentNumber = 1;
 let leftWidthPercent = 50;
 let isDragging = false;
 
+let lastLeftUrl = teacherUrlListLeft[0];
+let lastRightUrl = teacherUrlListRight[0];
+
 const leftPane = document.getElementById("leftPane");
 const rightPane = document.getElementById("rightPane");
 const divider = document.getElementById("divider");
@@ -144,13 +168,19 @@ const leftFrame = document.getElementById("leftFrame");
 const rightFrame = document.getElementById("rightFrame");
 
 function updateInfoDisplay() {
-  document.getElementById("infoDisplay").textContent =
-    "番号:" + currentNumber +
-    " / タイトル:" + titleList[currentNumber - 1];
+  document.getElementById("infoDisplay").innerHTML =
+    `<button id="numberButton">ページ:${currentNumber}</button><span>${titleList[currentNumber - 1]}</span>`;
+
+  document.getElementById("numberButton").onclick = () => {
+    if (confirm("ページを強制更新しますか？")) {
+      updateIframes(true);
+      updateStatusDisplay("強制更新");
+    }
+  };
 }
 
 function updateStatusDisplay(status) {
-  document.getElementById("statusDisplay").textContent = "状態:" + status;
+  document.getElementById("forceReloadButton").textContent = "状態:" + status;
 }
 
 function updateDisplays(status) {
@@ -158,7 +188,7 @@ function updateDisplays(status) {
   updateStatusDisplay(status);
 }
 
-function updateIframes() {
+function updateIframes(forceReload = false) {
   const leftUrl = teacherUrlListLeft[currentNumber - 1];
   const rightUrl = teacherUrlListRight[currentNumber - 1];
 
@@ -168,11 +198,13 @@ function updateIframes() {
     divider.classList.add("hidden");
 
     if (leftUrl !== "mama") {
+      lastLeftUrl = leftUrl;
       leftFrame.src = leftUrl;
+    } else if (forceReload && lastLeftUrl) {
+      leftFrame.src = lastLeftUrl;
     }
 
     rightFrame.src = "about:blank";
-
   } else {
     leftPane.style.width = leftWidthPercent + "%";
     rightPane.style.width = (100 - leftWidthPercent) + "%";
@@ -181,16 +213,22 @@ function updateIframes() {
     divider.classList.remove("hidden");
 
     if (leftUrl !== "mama") {
+      lastLeftUrl = leftUrl;
       leftFrame.src = leftUrl;
+    } else if (forceReload && lastLeftUrl) {
+      leftFrame.src = lastLeftUrl;
     }
 
     if (rightUrl !== "mama") {
+      lastRightUrl = rightUrl;
       rightFrame.src = rightUrl;
+    } else if (forceReload && lastRightUrl) {
+      rightFrame.src = lastRightUrl;
     }
   }
 }
 
-async function send() {
+async function sendCurrentNumber() {
   try {
     await channel.publish("next-number", { number: currentNumber });
     updateStatusDisplay("送信済み");
@@ -202,52 +240,62 @@ async function send() {
 
 document.getElementById("prevButton").onclick = () => {
   if (currentNumber > 1) {
-    currentNumber--;
-    updateDisplays("送信中");
-    updateIframes();
-    send();
+    if (confirm("前のページに戻りますか？")) {
+      currentNumber--;
+      updateDisplays("送信中");
+      updateIframes();
+      sendCurrentNumber();
+    }
   }
-};
-
-document.getElementById("refreshButton").onclick = () => {
-  updateStatusDisplay("再送信中");
-  send();
 };
 
 document.getElementById("nextButton").onclick = () => {
   if (currentNumber < titleList.length) {
-    currentNumber++;
-    updateDisplays("送信中");
-    updateIframes();
-    send();
+    if (confirm("次のページに移動しますか？")) {
+      currentNumber++;
+      updateDisplays("送信中");
+      updateIframes();
+      sendCurrentNumber();
+    }
   }
+};
+
+// 状態ボタン：現在ページ番号を生徒へ再送信
+document.getElementById("forceReloadButton").onclick = () => {
+  updateStatusDisplay("再送信中");
+  sendCurrentNumber();
 };
 
 ably.connection.on((stateChange) => {
   updateStatusDisplay(stateChange.current);
 });
 
-divider.addEventListener("mousedown", (event) => {
+channel.subscribe("request-current-number", () => {
+  updateStatusDisplay("問い合わせ受信・再送信中");
+  sendCurrentNumber();
+});
+
+divider.addEventListener("pointerdown", (event) => {
   isDragging = true;
   document.body.classList.add("dragging");
+  divider.setPointerCapture(event.pointerId);
   event.preventDefault();
 });
 
-document.addEventListener("mouseup", () => {
+divider.addEventListener("pointerup", (event) => {
   isDragging = false;
   document.body.classList.remove("dragging");
+  divider.releasePointerCapture(event.pointerId);
 });
 
-document.addEventListener("mousemove", (event) => {
+divider.addEventListener("pointermove", (event) => {
   if (!isDragging) return;
 
   const rect = document.getElementById("frameArea").getBoundingClientRect();
-
   let percent = ((event.clientX - rect.left) / rect.width) * 100;
   percent = Math.max(10, Math.min(90, percent));
 
   leftWidthPercent = percent;
-
   leftPane.style.width = leftWidthPercent + "%";
   rightPane.style.width = (100 - leftWidthPercent) + "%";
 
