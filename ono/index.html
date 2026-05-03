@@ -1,1 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>校歌再生</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 40px;
+      background: #f8f8f8;
+    }
 
+    h1 {
+      font-size: 24px;
+      margin-bottom: 30px;
+    }
+
+    button {
+      font-size: 20px;
+      padding: 14px 28px;
+      border-radius: 10px;
+      border: none;
+      background: #333;
+      color: white;
+    }
+
+    audio {
+      margin-top: 30px;
+      width: 100%;
+      max-width: 400px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>校歌</h1>
+
+  <button id="playButton">校歌を再生する</button>
+
+  <audio id="schoolSong" controls autoplay>
+    <source src="inuikawa_shool_song.m4a" type="audio/mp4">
+    お使いのブラウザは音声再生に対応していません。
+  </audio>
+
+  <script>
+    const audio = document.getElementById("schoolSong");
+    const playButton = document.getElementById("playButton");
+
+    window.addEventListener("load", () => {
+      audio.play().then(() => {
+        playButton.style.display = "none";
+      }).catch(() => {
+        playButton.style.display = "inline-block";
+      });
+    });
+
+    playButton.addEventListener("click", () => {
+      audio.play();
+      playButton.style.display = "none";
+    });
+  </script>
+
+</body>
+</html>
