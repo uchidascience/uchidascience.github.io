@@ -14,7 +14,7 @@ html, body {
   font-family: sans-serif;
 }
 
-button { touch-action: manipulation; }
+button, a { touch-action: manipulation; }
 
 .topBar {
   position: absolute;
@@ -38,6 +38,22 @@ button { touch-action: manipulation; }
 }
 
 #statusArea { right: 10px; }
+
+.buttonSpacer {
+  width: 16px;
+}
+
+#imageLinks {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#imageLinks a {
+  color: #0645ad;
+  cursor: pointer;
+  text-decoration: underline;
+}
 
 #frameArea {
   display: flex;
@@ -85,6 +101,36 @@ iframe {
 .dragging iframe {
   pointer-events: none;
 }
+
+body.imageMode #frameArea {
+  filter: blur(4px);
+}
+
+#imageOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.72);
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+#imageOverlay img {
+  max-width: 96vw;
+  max-height: 92vh;
+  object-fit: contain;
+  background: white;
+}
+
+#closeImageButton {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 110;
+  font-size: 18px;
+  padding: 8px 14px;
+}
 </style>
 </head>
 
@@ -98,6 +144,8 @@ iframe {
 <div id="buttons" class="topBar">
   <button id="prevButton">戻る</button>
   <button id="nextButton">次へ</button>
+  <span class="buttonSpacer"></span>
+  <div id="imageLinks"></div>
 </div>
 
 <div id="statusArea" class="topBar">
@@ -118,6 +166,11 @@ iframe {
       <iframe id="rightFrame"></iframe>
     </div>
   </div>
+</div>
+
+<div id="imageOverlay">
+  <button id="closeImageButton">解除</button>
+  <img id="overlayImage" src="">
 </div>
 
 <script>
@@ -148,6 +201,16 @@ const teacherUrlListRight = [
   "mama"
 ];
 
+const imageList = [
+  { title: "送信プログラム", url: "./img/1.png" },
+  { title: "受信プログラム", url: "./img/2.png" },
+  { title: "ネットワーク", url: "./img/3.png" },
+  { title: "パケット通信", url: "./img/4.png" },
+  { title: "IPアドレス", url: "./img/5.png" },
+  { title: "パスワード", url: "./img/6.png" },
+  { title: "暗号化", url: "./img/7.png" }
+];
+
 const ably = new Ably.Realtime({
   key: "yPyk0g.YmsQlA:1T_iCByOObaZup3LYuvuWhAjCbRMOVvsMGCl1U9sOZk"
 });
@@ -166,6 +229,41 @@ const rightPane = document.getElementById("rightPane");
 const divider = document.getElementById("divider");
 const leftFrame = document.getElementById("leftFrame");
 const rightFrame = document.getElementById("rightFrame");
+
+function createImageLinks() {
+  const area = document.getElementById("imageLinks");
+  area.innerHTML = "";
+
+  imageList.forEach((item) => {
+    const link = document.createElement("a");
+    link.textContent = item.title;
+    link.href = "#";
+    link.onclick = async (event) => {
+      event.preventDefault();
+      showImage(item.url);
+      await channel.publish("show-image", { url: item.url });
+      updateStatusDisplay("画像送信");
+    };
+    area.appendChild(link);
+  });
+}
+
+function showImage(url) {
+  document.body.classList.add("imageMode");
+  document.getElementById("overlayImage").src = url;
+  document.getElementById("imageOverlay").style.display = "flex";
+}
+
+async function hideImage(sendToStudents = true) {
+  document.body.classList.remove("imageMode");
+  document.getElementById("imageOverlay").style.display = "none";
+  document.getElementById("overlayImage").src = "";
+
+  if (sendToStudents) {
+    await channel.publish("hide-image", {});
+    updateStatusDisplay("画像解除");
+  }
+}
 
 function updateInfoDisplay() {
   document.getElementById("infoDisplay").innerHTML =
@@ -260,11 +358,20 @@ document.getElementById("nextButton").onclick = () => {
   }
 };
 
-// 状態ボタン：現在ページ番号を生徒へ再送信
 document.getElementById("forceReloadButton").onclick = () => {
   updateStatusDisplay("再送信中");
   sendCurrentNumber();
 };
+
+document.getElementById("closeImageButton").onclick = () => {
+  hideImage(true);
+};
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    hideImage(true);
+  }
+});
 
 ably.connection.on((stateChange) => {
   updateStatusDisplay(stateChange.current);
@@ -302,6 +409,7 @@ divider.addEventListener("pointermove", (event) => {
   event.preventDefault();
 });
 
+createImageLinks();
 updateIframes();
 updateDisplays("初期表示");
 </script>

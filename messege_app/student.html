@@ -60,6 +60,27 @@ iframe {
   box-sizing: border-box;
   display: block;
 }
+
+body.imageMode #studentArea {
+  filter: blur(4px);
+}
+
+#imageOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.72);
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+#imageOverlay img {
+  max-width: 96vw;
+  max-height: 92vh;
+  object-fit: contain;
+  background: white;
+}
 </style>
 </head>
 
@@ -78,6 +99,10 @@ iframe {
   <div class="iframeWrap">
     <iframe id="frame"></iframe>
   </div>
+</div>
+
+<div id="imageOverlay">
+  <img id="overlayImage" src="">
 </div>
 
 <script>
@@ -109,6 +134,18 @@ let currentNumber = 1;
 let lastUrl = urlList[0];
 
 const frame = document.getElementById("frame");
+
+function showImage(url) {
+  document.body.classList.add("imageMode");
+  document.getElementById("overlayImage").src = url;
+  document.getElementById("imageOverlay").style.display = "flex";
+}
+
+function hideImage() {
+  document.body.classList.remove("imageMode");
+  document.getElementById("imageOverlay").style.display = "none";
+  document.getElementById("overlayImage").src = "";
+}
 
 function updateInfoDisplay() {
   const title = titleList[currentNumber - 1];
@@ -157,7 +194,6 @@ async function requestCurrentNumber() {
   }
 }
 
-// 状態ボタン：先生用アプリへ現在番号を問い合わせ
 document.getElementById("forceReloadButton").onclick = () => {
   requestCurrentNumber();
 };
@@ -176,6 +212,16 @@ channel.subscribe("next-number", (message) => {
   } else {
     updateStatusDisplay("受信・変更なし");
   }
+});
+
+channel.subscribe("show-image", (message) => {
+  showImage(message.data.url);
+  updateStatusDisplay("画像表示");
+});
+
+channel.subscribe("hide-image", () => {
+  hideImage();
+  updateStatusDisplay("画像解除");
 });
 
 updateIframe();
