@@ -43,7 +43,6 @@ button { touch-action: manipulation; }
   height: 100dvh;
   padding-top: 48px;
   box-sizing: border-box;
-  position: relative;
 }
 
 .iframeWrap {
@@ -116,7 +115,7 @@ const titleList = [
 ];
 
 const urlList = [
-  "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/message_app.sb3&id=AH05B23F3B",
+  "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/message_app.sb3&block=basic&id=AH05B23F3B",
   "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/Account_non.sb3&block=basic&id=AH05B23F3B",
   "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/Account_C.sb3&block=basic&id=AH05B23F3B",
   "mama",
@@ -194,6 +193,16 @@ async function requestCurrentNumber() {
   }
 }
 
+async function requestInitialState() {
+  try {
+    updateStatusDisplay("初期状態問い合わせ中");
+    await channel.publish("request-current-number", {});
+  } catch (error) {
+    updateStatusDisplay("初期状態問い合わせエラー");
+    console.error(error);
+  }
+}
+
 document.getElementById("forceReloadButton").onclick = () => {
   requestCurrentNumber();
 };
@@ -214,6 +223,26 @@ channel.subscribe("next-number", (message) => {
   }
 });
 
+channel.subscribe("sync-state", (message) => {
+  const receivedNumber = message.data.number;
+  const imageUrl = message.data.imageUrl;
+
+  if (receivedNumber !== currentNumber) {
+    currentNumber = receivedNumber;
+    updateDisplays("初期同期");
+    updateIframe();
+  } else {
+    updateStatusDisplay("初期同期・ページ変更なし");
+  }
+
+  if (imageUrl) {
+    showImage(imageUrl);
+    updateStatusDisplay("画像同期");
+  } else {
+    hideImage();
+  }
+});
+
 channel.subscribe("show-image", (message) => {
   showImage(message.data.url);
   updateStatusDisplay("画像表示");
@@ -226,6 +255,7 @@ channel.subscribe("hide-image", () => {
 
 updateIframe();
 updateDisplays("初期表示");
+requestInitialState();
 </script>
 
 </body>

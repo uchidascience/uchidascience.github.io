@@ -184,7 +184,7 @@ const titleList = [
 ];
 
 const teacherUrlListLeft = [
-  "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/message_app.sb3&id=AH05B23F3B",
+  "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/message_app.sb3&block=basic&id=AH05B23F3B",
   "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/Account_non.sb3&block=basic&id=AH05B23F3B",
   "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/Account_S.sb3&fullscreen=true&block=basic&id=AH05B23F3B",
   "mama",
@@ -223,6 +223,7 @@ let isDragging = false;
 
 let lastLeftUrl = teacherUrlListLeft[0];
 let lastRightUrl = teacherUrlListRight[0];
+let currentImageUrl = null;
 
 const leftPane = document.getElementById("leftPane");
 const rightPane = document.getElementById("rightPane");
@@ -249,12 +250,14 @@ function createImageLinks() {
 }
 
 function showImage(url) {
+  currentImageUrl = url;
   document.body.classList.add("imageMode");
   document.getElementById("overlayImage").src = url;
   document.getElementById("imageOverlay").style.display = "flex";
 }
 
 async function hideImage(sendToStudents = true) {
+  currentImageUrl = null;
   document.body.classList.remove("imageMode");
   document.getElementById("imageOverlay").style.display = "none";
   document.getElementById("overlayImage").src = "";
@@ -378,8 +381,14 @@ ably.connection.on((stateChange) => {
 });
 
 channel.subscribe("request-current-number", () => {
-  updateStatusDisplay("問い合わせ受信・再送信中");
-  sendCurrentNumber();
+  updateStatusDisplay("状態問い合わせ受信");
+
+  channel.publish("sync-state", {
+    number: currentNumber,
+    imageUrl: currentImageUrl
+  });
+
+  updateStatusDisplay("状態送信済み");
 });
 
 divider.addEventListener("pointerdown", (event) => {
