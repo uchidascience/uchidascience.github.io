@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>先生用</title>
 <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
+
 <style>
 html, body {
   margin: 0;
@@ -14,52 +15,49 @@ html, body {
   font-family: sans-serif;
 }
 
-button, a { touch-action: manipulation; }
+button, select {
+  touch-action: manipulation;
+}
 
-.topBar {
+#topControls {
   position: absolute;
   top: 8px;
-  height: 32px;
-  display: flex;
+  left: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto auto 1fr;
   align-items: center;
-  gap: 6px;
-  background: rgba(255,255,255,0.9);
-  padding: 0 8px;
-  border-radius: 6px;
   z-index: 20;
-  font-size: 14px;
+  box-sizing: border-box;
+  padding: 0 10px;
 }
 
-#infoDisplay { left: 10px; }
-
-#buttons {
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-#statusArea { right: 10px; }
-
-.buttonSpacer {
-  width: 16px;
-}
-
-#imageLinks {
+.topGroup {
   display: flex;
-  gap: 8px;
   align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.9);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+  width: fit-content;
 }
 
-#imageLinks a {
-  color: #0645ad;
-  cursor: pointer;
-  text-decoration: underline;
+#leftGroup { justify-self: start; }
+#centerGroup { justify-self: center; }
+#selectGroup { justify-self: center; margin-left: 16px; }
+#rightGroup { justify-self: end; }
+
+#imageSelect {
+  font-size: 14px;
+  height: 28px;
 }
 
 #frameArea {
   display: flex;
   width: 100vw;
   height: 100dvh;
-  padding-top: 48px;
+  padding-top: 52px;
   box-sizing: border-box;
 }
 
@@ -136,20 +134,26 @@ body.imageMode #frameArea {
 
 <body>
 
-<div id="infoDisplay" class="topBar">
-  <button id="numberButton">ページ:1</button>
-  <span>基本のチャットアプリ</span>
-</div>
+<div id="topControls">
+  <div id="leftGroup" class="topGroup">
+    <button id="numberButton">ページ:1</button>
+    <span id="titleText">基本のチャットアプリ</span>
+  </div>
 
-<div id="buttons" class="topBar">
-  <button id="prevButton">戻る</button>
-  <button id="nextButton">次へ</button>
-  <span class="buttonSpacer"></span>
-  <div id="imageLinks"></div>
-</div>
+  <div id="centerGroup" class="topGroup">
+    <button id="prevButton">戻る</button>
+    <button id="nextButton">次へ</button>
+  </div>
 
-<div id="statusArea" class="topBar">
-  <button id="forceReloadButton">状態:初期化中</button>
+  <div id="selectGroup" class="topGroup">
+    <select id="imageSelect">
+      <option value="">▼資料を表示</option>
+    </select>
+  </div>
+
+  <div id="rightGroup" class="topGroup">
+    <button id="forceReloadButton">状態:初期化中</button>
+  </div>
 </div>
 
 <div id="frameArea">
@@ -204,11 +208,15 @@ const teacherUrlListRight = [
 const imageList = [
   { title: "送信プログラム", url: "./img/1.png" },
   { title: "受信プログラム", url: "./img/2.png" },
-  { title: "ネットワーク", url: "./img/3.png" },
-  { title: "パケット通信", url: "./img/4.png" },
-  { title: "IPアドレス", url: "./img/5.png" },
-  { title: "パスワード", url: "./img/6.png" },
-  { title: "暗号化", url: "./img/7.png" }
+  { title: "情報モラル", url: "./img/3.png" },
+  { title: "ネットワークの構成", url: "./img/4.png" },
+  { title: "パケット通信", url: "./img/5.png" },
+  { title: "IPアドレス", url: "./img/6.png" },
+  { title: "安全なパスワード", url: "./img/7.png" },
+  { title: "暗号化", url: "./img/8.png" },
+  { title: "ファイアウォール", url: "./img/9.png" },
+  { title: "不正プログラム", url: "./img/10.png" },
+  { title: "フィッシング詐欺", url: "./img/11.png" }
 ];
 
 const ably = new Ably.Realtime({
@@ -231,22 +239,30 @@ const divider = document.getElementById("divider");
 const leftFrame = document.getElementById("leftFrame");
 const rightFrame = document.getElementById("rightFrame");
 
-function createImageLinks() {
-  const area = document.getElementById("imageLinks");
-  area.innerHTML = "";
+function createImageSelect() {
+  const select = document.getElementById("imageSelect");
+  select.innerHTML = `<option value="">▼資料を表示</option>`;
 
   imageList.forEach((item) => {
-    const link = document.createElement("a");
-    link.textContent = item.title;
-    link.href = "#";
-    link.onclick = async (event) => {
-      event.preventDefault();
-      showImage(item.url);
-      await channel.publish("show-image", { url: item.url });
-      updateStatusDisplay("画像送信");
-    };
-    area.appendChild(link);
+    const option = document.createElement("option");
+    option.value = item.url;
+    option.textContent = item.title;
+    select.appendChild(option);
   });
+
+  select.onchange = async () => {
+    const selectedUrl = select.value;
+    if (!selectedUrl) return;
+
+    showImage(selectedUrl);
+
+    await channel.publish("show-image", {
+      url: selectedUrl
+    });
+
+    updateStatusDisplay("画像送信");
+    select.value = "";
+  };
 }
 
 function showImage(url) {
@@ -269,8 +285,8 @@ async function hideImage(sendToStudents = true) {
 }
 
 function updateInfoDisplay() {
-  document.getElementById("infoDisplay").innerHTML =
-    `<button id="numberButton">ページ:${currentNumber}</button><span>${titleList[currentNumber - 1]}</span>`;
+  document.getElementById("numberButton").textContent = "ページ:" + currentNumber;
+  document.getElementById("titleText").textContent = titleList[currentNumber - 1];
 
   document.getElementById("numberButton").onclick = () => {
     if (confirm("ページを強制更新しますか？")) {
@@ -331,7 +347,9 @@ function updateIframes(forceReload = false) {
 
 async function sendCurrentNumber() {
   try {
-    await channel.publish("next-number", { number: currentNumber });
+    await channel.publish("next-number", {
+      number: currentNumber
+    });
     updateStatusDisplay("送信済み");
   } catch (error) {
     updateStatusDisplay("送信エラー");
@@ -418,7 +436,7 @@ divider.addEventListener("pointermove", (event) => {
   event.preventDefault();
 });
 
-createImageLinks();
+createImageSelect();
 updateIframes();
 updateDisplays("初期表示");
 </script>
