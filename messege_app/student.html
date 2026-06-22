@@ -123,16 +123,24 @@ const urlList = [
   "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/message_app6.sb3&block=basic&id=AH05B23F3B"
 ];
 
-function getChannelName() {
+function getKeyword() {
   const params = new URLSearchParams(window.location.search);
   const keyword = params.get("keyword");
 
-  if (!keyword || !/^\d+$/.test(keyword)) {
-    alert("URLに ?keyword=半角数字 を指定してください。例：student.html?keyword=1234");
-    throw new Error("keyword is missing or invalid");
+  if (!keyword || keyword.trim() === "") {
+    alert("URLに ?keyword=クラス名 を指定してください");
+    throw new Error("keyword is missing");
   }
 
-  return "lesson-control-" + keyword;
+  return keyword.trim();
+}
+
+function getChannelName() {
+  return "lesson-control-" + encodeURIComponent(getKeyword());
+}
+
+function getChannelLabel() {
+  return getKeyword();
 }
 
 const ably = new Ably.Realtime({
