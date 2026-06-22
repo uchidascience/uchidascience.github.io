@@ -123,16 +123,33 @@ const urlList = [
   "https://toio.github.io/toio-visual-programming/beta/?project=https://uchidascience.github.io/messege_app/message_app6.sb3&block=basic&id=AH05B23F3B"
 ];
 
+function getChannelName() {
+  const params = new URLSearchParams(window.location.search);
+  const keyword = params.get("keyword");
+
+  if (!keyword || !/^\d+$/.test(keyword)) {
+    alert("URLに ?keyword=半角数字 を指定してください。例：student.html?keyword=1234");
+    throw new Error("keyword is missing or invalid");
+  }
+
+  return "lesson-control-" + keyword;
+}
+
 const ably = new Ably.Realtime({
   key: "yPyk0g.YmsQlA:1T_iCByOObaZup3LYuvuWhAjCbRMOVvsMGCl1U9sOZk"
 });
 
-const channel = ably.channels.get("lesson-control");
+const channelName = getChannelName();
+const channel = ably.channels.get(channelName);
 
 let currentNumber = 1;
 let lastUrl = urlList[0];
 
 const frame = document.getElementById("frame");
+
+function getChannelLabel() {
+  return channelName.replace("lesson-control-", "");
+}
 
 function showImage(url) {
   document.body.classList.add("imageMode");
@@ -161,7 +178,8 @@ function updateInfoDisplay() {
 }
 
 function updateStatusDisplay(status) {
-  document.getElementById("forceReloadButton").textContent = "状態:" + status;
+  document.getElementById("forceReloadButton").textContent =
+    "状態:" + status + " / CH:" + getChannelLabel();
 }
 
 function updateDisplays(status) {

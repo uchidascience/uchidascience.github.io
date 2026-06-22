@@ -7,40 +7,19 @@
 <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
 
 <style>
-html, body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  font-family: sans-serif;
-}
-
-button, select {
-  touch-action: manipulation;
-}
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; }
+button, select { touch-action: manipulation; }
 
 #topControls {
-  position: absolute;
-  top: 8px;
-  left: 0;
-  width: 100%;
-  display: grid;
-  grid-template-columns: 1fr auto auto 1fr;
-  align-items: center;
-  z-index: 20;
-  box-sizing: border-box;
-  padding: 0 10px;
+  position: absolute; top: 8px; left: 0; width: 100%;
+  display: grid; grid-template-columns: 1fr auto auto 1fr;
+  align-items: center; z-index: 20; box-sizing: border-box; padding: 0 10px;
 }
 
 .topGroup {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: flex; align-items: center; gap: 8px;
   background: rgba(255,255,255,0.9);
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 14px;
-  width: fit-content;
+  padding: 4px 8px; border-radius: 6px; font-size: 14px; width: fit-content;
 }
 
 #leftGroup { justify-self: start; }
@@ -48,86 +27,49 @@ button, select {
 #selectGroup { justify-self: center; margin-left: 16px; }
 #rightGroup { justify-self: end; }
 
-#imageSelect {
-  font-size: 14px;
-  height: 28px;
-}
+#imageSelect { font-size: 14px; height: 28px; }
 
 #frameArea {
-  display: flex;
-  width: 100vw;
-  height: 100dvh;
-  padding-top: 52px;
-  box-sizing: border-box;
+  display: flex; width: 100vw; height: 100dvh;
+  padding-top: 52px; box-sizing: border-box;
 }
 
-.pane {
-  height: 100%;
-  position: relative;
-  overflow: hidden;
-}
+.pane { height: 100%; position: relative; overflow: hidden; }
 
 .iframeWrap {
-  width: 100%;
-  height: 100%;
-  overflow: auto;
+  width: 100%; height: 100%; overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 iframe {
-  width: 100%;
-  height: 100%;
-  border: 1px solid #ccc;
-  box-sizing: border-box;
-  display: block;
+  width: 100%; height: 100%;
+  border: 1px solid #ccc; box-sizing: border-box; display: block;
 }
 
 #leftPane { width: 50%; }
 #rightPane { width: 50%; }
 
 #divider {
-  width: 12px;
-  background: #ccc;
-  cursor: col-resize;
-  height: 100%;
-  flex-shrink: 0;
-  touch-action: none;
+  width: 12px; background: #ccc; cursor: col-resize;
+  height: 100%; flex-shrink: 0; touch-action: none;
 }
 
 .hidden { display: none; }
-
-.dragging iframe {
-  pointer-events: none;
-}
-
-body.imageMode #frameArea {
-  filter: blur(4px);
-}
+.dragging iframe { pointer-events: none; }
+body.imageMode #frameArea { filter: blur(4px); }
 
 #imageOverlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.72);
-  z-index: 100;
-  display: none;
-  align-items: center;
-  justify-content: center;
+  position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+  z-index: 100; display: none; align-items: center; justify-content: center;
 }
 
 #imageOverlay img {
-  max-width: 96vw;
-  max-height: 92vh;
-  object-fit: contain;
-  background: white;
+  max-width: 96vw; max-height: 92vh; object-fit: contain; background: white;
 }
 
 #closeImageButton {
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 110;
-  font-size: 18px;
-  padding: 8px 14px;
+  position: fixed; top: 12px; right: 12px;
+  z-index: 110; font-size: 18px; padding: 8px 14px;
 }
 </style>
 </head>
@@ -221,11 +163,24 @@ const imageList = [
   { title: "7-3　フィッシング詐欺", url: "./img/13.png" }
 ];
 
+function getChannelName() {
+  const params = new URLSearchParams(window.location.search);
+  const keyword = params.get("keyword");
+
+  if (!keyword || !/^\d+$/.test(keyword)) {
+    alert("URLに ?keyword=半角数字 を指定してください。例：teacher.html?keyword=1234");
+    throw new Error("keyword is missing or invalid");
+  }
+
+  return "lesson-control-" + keyword;
+}
+
 const ably = new Ably.Realtime({
   key: "yPyk0g.YmsQlA:1T_iCByOObaZup3LYuvuWhAjCbRMOVvsMGCl1U9sOZk"
 });
 
-const channel = ably.channels.get("lesson-control");
+const channelName = getChannelName();
+const channel = ably.channels.get(channelName);
 
 let currentNumber = 1;
 let leftWidthPercent = 50;
@@ -240,6 +195,10 @@ const rightPane = document.getElementById("rightPane");
 const divider = document.getElementById("divider");
 const leftFrame = document.getElementById("leftFrame");
 const rightFrame = document.getElementById("rightFrame");
+
+function getChannelLabel() {
+  return channelName.replace("lesson-control-", "");
+}
 
 function createImageSelect() {
   const select = document.getElementById("imageSelect");
@@ -299,7 +258,8 @@ function updateInfoDisplay() {
 }
 
 function updateStatusDisplay(status) {
-  document.getElementById("forceReloadButton").textContent = "状態:" + status;
+  document.getElementById("forceReloadButton").textContent =
+    "状態:" + status + " / CH:" + getChannelLabel();
 }
 
 function updateDisplays(status) {
