@@ -7,19 +7,40 @@
 <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
 
 <style>
-html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; }
-button, select { touch-action: manipulation; }
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: sans-serif;
+}
+
+button, select, a {
+  touch-action: manipulation;
+}
 
 #topControls {
-  position: absolute; top: 8px; left: 0; width: 100%;
-  display: grid; grid-template-columns: 1fr auto auto 1fr;
-  align-items: center; z-index: 20; box-sizing: border-box; padding: 0 10px;
+  position: absolute;
+  top: 8px;
+  left: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto auto 1fr;
+  align-items: center;
+  z-index: 20;
+  box-sizing: border-box;
+  padding: 0 10px;
 }
 
 .topGroup {
-  display: flex; align-items: center; gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   background: rgba(255,255,255,0.9);
-  padding: 4px 8px; border-radius: 6px; font-size: 14px; width: fit-content;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+  width: fit-content;
 }
 
 #leftGroup { justify-self: start; }
@@ -27,49 +48,94 @@ button, select { touch-action: manipulation; }
 #selectGroup { justify-self: center; margin-left: 16px; }
 #rightGroup { justify-self: end; }
 
-#imageSelect { font-size: 14px; height: 28px; }
-
-#frameArea {
-  display: flex; width: 100vw; height: 100dvh;
-  padding-top: 52px; box-sizing: border-box;
+#imageSelect {
+  font-size: 14px;
+  height: 28px;
 }
 
-.pane { height: 100%; position: relative; overflow: hidden; }
+#aboutLink {
+  margin-left: 10px;
+  font-size: 14px;
+  color: #0066cc;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+#frameArea {
+  display: flex;
+  width: 100vw;
+  height: 100dvh;
+  padding-top: 52px;
+  box-sizing: border-box;
+}
+
+.pane {
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
 
 .iframeWrap {
-  width: 100%; height: 100%; overflow: auto;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 iframe {
-  width: 100%; height: 100%;
-  border: 1px solid #ccc; box-sizing: border-box; display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+  display: block;
 }
 
 #leftPane { width: 50%; }
 #rightPane { width: 50%; }
 
 #divider {
-  width: 12px; background: #ccc; cursor: col-resize;
-  height: 100%; flex-shrink: 0; touch-action: none;
+  width: 12px;
+  background: #ccc;
+  cursor: col-resize;
+  height: 100%;
+  flex-shrink: 0;
+  touch-action: none;
 }
 
 .hidden { display: none; }
-.dragging iframe { pointer-events: none; }
-body.imageMode #frameArea { filter: blur(4px); }
+
+.dragging iframe {
+  pointer-events: none;
+}
+
+body.imageMode #frameArea {
+  filter: blur(4px);
+}
 
 #imageOverlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.72);
-  z-index: 100; display: none; align-items: center; justify-content: center;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.72);
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
 }
 
 #imageOverlay img {
-  max-width: 96vw; max-height: 92vh; object-fit: contain; background: white;
+  max-width: 96vw;
+  max-height: 92vh;
+  object-fit: contain;
+  background: white;
 }
 
 #closeImageButton {
-  position: fixed; top: 12px; right: 12px;
-  z-index: 110; font-size: 18px; padding: 8px 14px;
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 110;
+  font-size: 18px;
+  padding: 8px 14px;
 }
 </style>
 </head>
@@ -95,6 +161,7 @@ body.imageMode #frameArea { filter: blur(4px); }
 
   <div id="rightGroup" class="topGroup">
     <button id="forceReloadButton">状態:初期化中</button>
+    <a id="aboutLink" href="about.htm" target="_blank" rel="noopener noreferrer">本アプリに関して</a>
   </div>
 </div>
 
@@ -165,11 +232,23 @@ const imageList = [
 
 function getKeyword() {
   const params = new URLSearchParams(window.location.search);
-  const keyword = params.get("keyword");
+  let keyword = params.get("keyword");
 
   if (!keyword || keyword.trim() === "") {
-    alert("URLに ?keyword=クラス名 を指定してください");
-    throw new Error("keyword is missing");
+    keyword = prompt("チャンネルを指定してください。");
+
+    if (!keyword || keyword.trim() === "") {
+      alert("チャンネルが指定されていないため、通信を開始できません。");
+      throw new Error("keyword is missing");
+    }
+
+    keyword = keyword.trim();
+
+    const newUrl =
+      window.location.pathname +
+      "?keyword=" + encodeURIComponent(keyword);
+
+    window.history.replaceState(null, "", newUrl);
   }
 
   return keyword.trim();
@@ -203,10 +282,6 @@ const rightPane = document.getElementById("rightPane");
 const divider = document.getElementById("divider");
 const leftFrame = document.getElementById("leftFrame");
 const rightFrame = document.getElementById("rightFrame");
-
-function getChannelLabel() {
-  return channelName.replace("lesson-control-", "");
-}
 
 function createImageSelect() {
   const select = document.getElementById("imageSelect");

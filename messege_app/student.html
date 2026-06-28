@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>生徒用</title>
 <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
+
 <style>
 html, body {
   margin: 0;
@@ -14,7 +15,9 @@ html, body {
   font-family: sans-serif;
 }
 
-button { touch-action: manipulation; }
+button, a {
+  touch-action: manipulation;
+}
 
 #infoDisplay {
   position: absolute;
@@ -36,6 +39,14 @@ button { touch-action: manipulation; }
   padding: 4px 8px;
   border-radius: 6px;
   z-index: 20;
+}
+
+#aboutLink {
+  margin-left: 10px;
+  font-size: 14px;
+  color: #0066cc;
+  text-decoration: underline;
+  white-space: nowrap;
 }
 
 #studentArea {
@@ -92,6 +103,7 @@ body.imageMode #studentArea {
 
 <div id="statusArea">
   <button id="forceReloadButton">状態:初期化中</button>
+  <a id="aboutLink" href="about.htm" target="_blank" rel="noopener noreferrer">本アプリに関して</a>
 </div>
 
 <div id="studentArea">
@@ -125,11 +137,23 @@ const urlList = [
 
 function getKeyword() {
   const params = new URLSearchParams(window.location.search);
-  const keyword = params.get("keyword");
+  let keyword = params.get("keyword");
 
   if (!keyword || keyword.trim() === "") {
-    alert("URLに ?keyword=クラス名 を指定してください");
-    throw new Error("keyword is missing");
+    keyword = prompt("チャンネルを指定してください。");
+
+    if (!keyword || keyword.trim() === "") {
+      alert("チャンネルが指定されていないため、通信を開始できません。");
+      throw new Error("keyword is missing");
+    }
+
+    keyword = keyword.trim();
+
+    const newUrl =
+      window.location.pathname +
+      "?keyword=" + encodeURIComponent(keyword);
+
+    window.history.replaceState(null, "", newUrl);
   }
 
   return keyword.trim();
@@ -154,10 +178,6 @@ let currentNumber = 1;
 let lastUrl = urlList[0];
 
 const frame = document.getElementById("frame");
-
-function getChannelLabel() {
-  return channelName.replace("lesson-control-", "");
-}
 
 function showImage(url) {
   document.body.classList.add("imageMode");
